@@ -36,15 +36,12 @@ jobs:
         with:
           enablement: true
           token: ${{ secrets.PAGES_TOKEN }}
-      - name: Empacotar site
-        run: tar --dereference --hard-dereference --directory dist/client -cvf "$RUNNER_TEMP/github-pages.tar" .
       - name: Enviar site gerado
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-pages-artifact@v5
         with:
-          name: github-pages
-          path: ${{ runner.temp }}/github-pages.tar
+          path: dist/client
           retention-days: 1
-          compression-level: 0
+          include-hidden-files: true
   deploy:
     environment:
       name: github-pages
