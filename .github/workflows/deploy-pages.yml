@@ -33,9 +33,6 @@ jobs:
           NEXT_PUBLIC_BASE_PATH: /law-site-chindler
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v6
-        with:
-          enablement: true
-          token: ${{ secrets.PAGES_TOKEN }}
       - name: Enviar site gerado
         uses: actions/upload-pages-artifact@v5
         with:
