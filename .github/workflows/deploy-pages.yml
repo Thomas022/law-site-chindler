@@ -17,7 +17,7 @@ jobs:
       - name: Baixar o projeto
         uses: actions/checkout@v6
       - name: Instalar pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10
       - name: Configurar Node.js
@@ -32,11 +32,19 @@ jobs:
         env:
           NEXT_PUBLIC_BASE_PATH: /law-site-chindler
       - name: Configurar GitHub Pages
-        uses: actions/configure-pages@v5
-      - name: Enviar site gerado
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/configure-pages@v6
         with:
-          path: dist/client
+          enablement: true
+          token: ${{ secrets.PAGES_TOKEN }}
+      - name: Empacotar site
+        run: tar --dereference --hard-dereference --directory dist/client -cvf "$RUNNER_TEMP/github-pages.tar" .
+      - name: Enviar site gerado
+        uses: actions/upload-artifact@v6
+        with:
+          name: github-pages
+          path: ${{ runner.temp }}/github-pages.tar
+          retention-days: 1
+          compression-level: 0
   deploy:
     environment:
       name: github-pages
@@ -46,4 +54,4 @@ jobs:
     steps:
       - name: Publicar
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
