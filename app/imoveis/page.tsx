@@ -1,26 +1,7 @@
-'use client';
-import { useMemo, useState } from 'react';
-import logoChindler from '../../logo_chindler_peq_nova.png';
-import { imoveis, type Imovel } from './imoveis';
-const dinheiro = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+import ImoveisClient from './ImoveisClient';
 
-function ImovelCard({ imovel }: { imovel: Imovel }) {
-  const [foto,setFoto]=useState(0);
-  const anterior=()=>setFoto(atual=>(atual-1+imovel.imagens.length)%imovel.imagens.length);
-  const proxima=()=>setFoto(atual=>(atual+1)%imovel.imagens.length);
-  return <article className="property-card"><div className="property-photo"><img src={imovel.imagens[foto]} alt={`${imovel.titulo} — foto ${foto+1} de ${imovel.imagens.length}`}/>{imovel.destaque&&<span className="featured">Destaque</span>}<span className="purpose">{imovel.finalidade}</span>{imovel.imagens.length>1&&<><div className="gallery-controls"><button onClick={anterior} aria-label={`Foto anterior de ${imovel.titulo}`}>‹</button><span>{foto+1} / {imovel.imagens.length}</span><button onClick={proxima} aria-label={`Próxima foto de ${imovel.titulo}`}>›</button></div><div className="gallery-dots" aria-hidden="true">{imovel.imagens.map((_,index)=><i className={index===foto?'active':''} key={index}/>)}</div></>}</div><div className="property-card-body"><p className="property-location">{imovel.tipo} • {imovel.bairro}</p><h3>{imovel.titulo}</h3><div className="property-features">{imovel.quartos>0&&<span>{imovel.quartos} quartos</span>}<span>{imovel.banheiros} banheiros</span><span>{imovel.area} m²</span></div><div className="property-price"><div><strong>{dinheiro.format(imovel.preco)}</strong>{imovel.finalidade==='Alugar'&&<span>/mês</span>}</div><a href={`mailto:contato@chindler.com.br?subject=Interesse no imóvel ${imovel.id}`} aria-label={`Tenho interesse em ${imovel.titulo}`}>→</a></div></div></article>;
-}
+export const dynamic = 'force-static';
 
-export default function ImoveisPage(){
-  const [finalidade,setFinalidade]=useState('Todos'); const [tipo,setTipo]=useState('Todos'); const [bairro,setBairro]=useState('Todos'); const [busca,setBusca]=useState('');
-  const resultado=useMemo(()=>imoveis.filter(i=>(finalidade==='Todos'||i.finalidade===finalidade)&&(tipo==='Todos'||i.tipo===tipo)&&(bairro==='Todos'||i.bairro===bairro)&&`${i.titulo} ${i.bairro}`.toLowerCase().includes(busca.toLowerCase())),[finalidade,tipo,bairro,busca]);
-  const limpar=()=>{setFinalidade('Todos');setTipo('Todos');setBairro('Todos');setBusca('')};
-  return <main className="property-page">
-    <header className="nav"><a className="brand" href="/" aria-label="Chindler, início"><img className="brand-logo" src={logoChindler.src} alt="Chindler" /></a><nav aria-label="Navegação principal"><a href="/imoveis">Balcão de Imóveis</a><div className="nav-dropdown"><button type="button" aria-haspopup="true">Condomínio <span aria-hidden="true">⌄</span></button><div className="dropdown-menu"><a href="/condominio/servicos">Serviços</a><a href="/condominio/diferenciais">Diferenciais da Chindler</a><a href="/condominio/taxa-administrativa">Taxa Administrativa</a></div></div><a href="/#contato">Contato</a></nav><a className="nav-cta" href="https://admin107486.superlogica.net/clients/areadocondomino" target="_blank" rel="noreferrer">Portal do Cliente</a></header>
-    <section className="property-hero"><div><p className="eyebrow">BALCÃO DE IMÓVEIS • RIO DE JANEIRO</p><h1>Encontre o lugar certo para <em>o seu momento.</em></h1><p>Imóveis selecionados para comprar ou alugar, com atendimento próximo e segurança em todas as etapas.</p></div></section>
-    <section className="property-search" aria-label="Busca de imóveis"><div className="purpose-tabs">{['Todos','Comprar','Alugar'].map(item=><button key={item} className={finalidade===item?'active':''} onClick={()=>setFinalidade(item)}>{item}</button>)}</div><div className="filter-row"><label>BUSCAR<input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Bairro ou palavra-chave" /></label><label>TIPO<select value={tipo} onChange={e=>setTipo(e.target.value)}><option>Todos</option><option>Apartamento</option><option>Casa</option><option>Comercial</option></select></label><label>BAIRRO<select value={bairro} onChange={e=>setBairro(e.target.value)}><option>Todos</option>{[...new Set(imoveis.map(i=>i.bairro))].map(item=><option key={item}>{item}</option>)}</select></label><div className="filter-count"><strong>{resultado.length}</strong><span>imóveis encontrados</span></div></div></section>
-    <section className="property-results"><div className="results-head"><div><p className="section-label">IMÓVEIS SELECIONADOS</p><h2>Comprar ou alugar com <em>tranquilidade.</em></h2></div><p>A Chindler acompanha você da busca à assinatura do contrato.</p></div>{resultado.length?<div className="property-grid">{resultado.map(i=><ImovelCard imovel={i} key={i.id}/>)}</div>:<div className="empty-results"><h3>Nenhum imóvel encontrado.</h3><p>Tente remover algum filtro ou buscar por outro bairro.</p><button onClick={limpar}>Limpar filtros</button></div>}</section>
-    <section className="inner-cta"><p className="section-label">ATENDIMENTO CHINDLER</p><h2>Não encontrou o imóvel ideal?</h2><p className="property-cta-copy">Conte o que você procura e nossa equipe ajuda a encontrar as melhores opções.</p><a className="button light" href="/#contato">Fale com a Chindler <span>→</span></a></section>
-    <footer><div className="brand"><img className="brand-logo footer-logo" src={logoChindler.src} alt="Chindler" /></div><div className="footer-details"><p>Av. Rio Branco, 109 - 18º Andar<br/>Centro - Rio de Janeiro - RJ</p><a className="footer-contact" href="tel:+552122216453"><span aria-hidden="true">☎</span> (21) 2221-6453</a></div><p>© 2026 Chindler</p></footer>
-  </main>;
+export default function ImoveisPage() {
+  return <ImoveisClient />;
 }
