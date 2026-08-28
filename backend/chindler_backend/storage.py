@@ -21,9 +21,6 @@ class CloudinaryMediaStorage(Storage):
             overwrite=False,
             unique_filename=True,
             allowed_formats=["jpg", "jpeg", "png", "webp"],
-            transformation=[
-                {"width": 2400, "height": 1800, "crop": "limit", "quality": "auto:good"}
-            ],
         )
         return result["public_id"]
 
@@ -38,7 +35,7 @@ class CloudinaryMediaStorage(Storage):
         return CloudinaryImage(name).build_url(
             secure=True,
             fetch_format="auto",
-            quality="auto",
+            quality="auto:best",
         )
 
     def transformed_url(self, name, *, width, height, crop="fill"):
@@ -49,5 +46,5 @@ class CloudinaryMediaStorage(Storage):
             crop=crop,
             gravity="auto",
             fetch_format="auto",
-            quality="auto",
+            quality="auto:best",
         )

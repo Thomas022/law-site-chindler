@@ -25,7 +25,7 @@ def optimize_property_image(upload):
             Image.Resampling.LANCZOS,
         )
         output = BytesIO()
-        image.save(output, format="JPEG", quality=85, optimize=True, progressive=True)
+        image.save(output, format="JPEG", quality=92, optimize=True, progressive=True)
         output.seek(0)
         width, height = image.size
 

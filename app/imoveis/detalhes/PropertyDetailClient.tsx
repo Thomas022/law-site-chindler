@@ -83,11 +83,13 @@ export default function PropertyDetailClient() {
 
   return <main className="property-detail-page"><Header />
     <section className="detail-gallery">
-      <div className="detail-gallery-media">
-        <img className="detail-main-image" src={current?.url ?? fallbackPhoto.src} alt={current?.alt_text || property.title} />
-        {images.length > 1 && <div className="detail-gallery-counter"><button onClick={() => setActiveImage((value) => (value - 1 + images.length) % images.length)} aria-label="Imagem anterior">‹</button><span>{activeImage + 1} / {images.length}</span><button onClick={() => setActiveImage((value) => (value + 1) % images.length)} aria-label="Próxima imagem">›</button></div>}
+      <div className={`detail-gallery-layout${images.length > 1 ? '' : ' single-image'}`}>
+        <div className="detail-gallery-media">
+          <img className="detail-main-image" src={current?.url ?? fallbackPhoto.src} alt={current?.alt_text || property.title} />
+          {images.length > 1 && <div className="detail-gallery-counter"><button onClick={() => setActiveImage((value) => (value - 1 + images.length) % images.length)} aria-label="Imagem anterior">‹</button><span>{activeImage + 1} / {images.length}</span><button onClick={() => setActiveImage((value) => (value + 1) % images.length)} aria-label="Próxima imagem">›</button></div>}
+        </div>
+        {images.length > 1 && <div className="detail-thumbnails">{images.map((image, index) => <button className={index === activeImage ? 'active' : ''} onClick={() => setActiveImage(index)} key={`${image.url}-${index}`} aria-label={`Abrir imagem ${index + 1}`}><img src={image.url ?? fallbackPhoto.src} alt="" /></button>)}</div>}
       </div>
-      {images.length > 1 && <div className="detail-thumbnails">{images.map((image, index) => <button className={index === activeImage ? 'active' : ''} onClick={() => setActiveImage(index)} key={`${image.url}-${index}`} aria-label={`Abrir imagem ${index + 1}`}><img src={image.url ?? fallbackPhoto.src} alt="" /></button>)}</div>}
     </section>
     <section className="detail-gallery-copy"><a href={sitePath('/imoveis/')}>← Voltar ao Balcão</a><div><p>{property.purpose_label} • {property.property_type_label}</p><h1>{property.title}</h1><span>{property.address.display}</span></div></section>
     <section className="detail-content"><div className="detail-description"><p className="section-label">SOBRE O IMÓVEL</p><h2>{property.property_type_label} em <em>{property.address.neighborhood}.</em></h2><p>{property.description}</p></div><aside className="detail-summary"><p>{property.purpose_label}</p><strong>{property.price_display}</strong>{property.purpose === 'rent' && property.price && <small>por mês</small>}{property.condominium_fee && <span>Condomínio: R$ {Number(property.condominium_fee).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}<a href="#interesse">Tenho interesse <b>→</b></a></aside></section>
