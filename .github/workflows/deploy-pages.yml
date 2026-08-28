@@ -27,6 +27,12 @@ jobs:
           cache: pnpm
       - name: Instalar dependências
         run: pnpm install --frozen-lockfile
+      - name: Validar configuração da API
+        run: |
+          test -n "$NEXT_PUBLIC_API_URL"
+          curl --fail --show-error --silent --retry 5 --retry-delay 10 "$NEXT_PUBLIC_API_URL/health/"
+        env:
+          NEXT_PUBLIC_API_URL: ${{ vars.API_URL }}
       - name: Gerar site estático
         run: pnpm build:pages
         env:
@@ -34,6 +40,8 @@ jobs:
           NEXT_PUBLIC_API_URL: ${{ vars.API_URL }}
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Enviar site gerado
         uses: actions/upload-pages-artifact@v5
         with:
