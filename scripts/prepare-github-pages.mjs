@@ -5,6 +5,8 @@ const output = join(process.cwd(), 'dist', 'client');
 const basePath = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/^\//, '');
 const routes = [
   'imoveis',
+  'imoveis/detalhes',
+  'privacidade',
   'condominio/servicos',
   'condominio/diferenciais',
   'condominio/taxa-administrativa',
