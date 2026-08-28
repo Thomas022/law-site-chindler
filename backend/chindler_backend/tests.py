@@ -3,6 +3,11 @@ from django.urls import reverse
 
 
 class HealthCheckTests(TestCase):
+    def test_root_redirects_to_admin(self):
+        response = self.client.get("/")
+
+        self.assertRedirects(response, "/admin/", fetch_redirect_response=False)
+
     def test_health_check_reports_service_ready(self):
         response = self.client.get(reverse("health-check"))
 

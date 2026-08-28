@@ -5,6 +5,7 @@ from django.contrib.auth import views as auth_views
 from django.db import connection
 from django.http import JsonResponse
 from django.urls import include, path
+from django.views.generic import RedirectView
 
 
 def health_check(_request):
@@ -21,6 +22,7 @@ def database_health_check(_request):
 
 
 urlpatterns = [
+    path("", RedirectView.as_view(pattern_name="admin:index", permanent=False)),
     path("api/v1/", include("properties.api.urls")),
     path("api/v1/", include("leads.api.urls")),
     path(
