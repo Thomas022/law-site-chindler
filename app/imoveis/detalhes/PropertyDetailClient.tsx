@@ -83,12 +83,13 @@ export default function PropertyDetailClient() {
 
   return <main className="property-detail-page"><Header />
     <section className="detail-gallery">
-      <img className="detail-main-image" src={current?.url ?? fallbackPhoto.src} alt={current?.alt_text || property.title} />
-      <div className="detail-gallery-shade" />
-      <div className="detail-gallery-copy"><a href={sitePath('/imoveis/')}>← Voltar ao Balcão</a><p>{property.purpose_label} • {property.property_type_label}</p><h1>{property.title}</h1><span>{property.address.display}</span></div>
-      {images.length > 1 && <div className="detail-gallery-counter"><button onClick={() => setActiveImage((value) => (value - 1 + images.length) % images.length)} aria-label="Imagem anterior">‹</button><span>{activeImage + 1} / {images.length}</span><button onClick={() => setActiveImage((value) => (value + 1) % images.length)} aria-label="Próxima imagem">›</button></div>}
+      <div className="detail-gallery-media">
+        <img className="detail-main-image" src={current?.url ?? fallbackPhoto.src} alt={current?.alt_text || property.title} />
+        {images.length > 1 && <div className="detail-gallery-counter"><button onClick={() => setActiveImage((value) => (value - 1 + images.length) % images.length)} aria-label="Imagem anterior">‹</button><span>{activeImage + 1} / {images.length}</span><button onClick={() => setActiveImage((value) => (value + 1) % images.length)} aria-label="Próxima imagem">›</button></div>}
+      </div>
+      {images.length > 1 && <div className="detail-thumbnails">{images.map((image, index) => <button className={index === activeImage ? 'active' : ''} onClick={() => setActiveImage(index)} key={`${image.url}-${index}`} aria-label={`Abrir imagem ${index + 1}`}><img src={image.url ?? fallbackPhoto.src} alt="" /></button>)}</div>}
     </section>
-    {images.length > 1 && <div className="detail-thumbnails">{images.map((image, index) => <button className={index === activeImage ? 'active' : ''} onClick={() => setActiveImage(index)} key={`${image.url}-${index}`} aria-label={`Abrir imagem ${index + 1}`}><img src={image.url ?? fallbackPhoto.src} alt="" /></button>)}</div>}
+    <section className="detail-gallery-copy"><a href={sitePath('/imoveis/')}>← Voltar ao Balcão</a><div><p>{property.purpose_label} • {property.property_type_label}</p><h1>{property.title}</h1><span>{property.address.display}</span></div></section>
     <section className="detail-content"><div className="detail-description"><p className="section-label">SOBRE O IMÓVEL</p><h2>{property.property_type_label} em <em>{property.address.neighborhood}.</em></h2><p>{property.description}</p></div><aside className="detail-summary"><p>{property.purpose_label}</p><strong>{property.price_display}</strong>{property.purpose === 'rent' && property.price && <small>por mês</small>}{property.condominium_fee && <span>Condomínio: R$ {Number(property.condominium_fee).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}<a href="#interesse">Tenho interesse <b>→</b></a></aside></section>
     <section className="detail-features" aria-label="Características do imóvel">{featureItems.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</section>
     <section className="detail-location"><div><p className="section-label">LOCALIZAÇÃO</p><h2>{property.address.display}</h2><p>{property.map.visible ? 'A posição exibida no mapa é aproximada para preservar a privacidade do imóvel.' : 'Entre em contato com a Chindler para obter mais informações sobre a localização.'}</p></div>{mapUrl && <iframe title={`Localização aproximada de ${property.title}`} src={mapUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />}</section>
