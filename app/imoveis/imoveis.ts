@@ -1,9 +1,63 @@
-export type Imovel = { id:number; finalidade:'Comprar'|'Alugar'; tipo:'Apartamento'|'Casa'|'Comercial'; bairro:string; titulo:string; preco:number; quartos:number; banheiros:number; area:number; imagens:string[]; destaque?:boolean };
-export const imoveis: Imovel[] = [
-  {id:1,finalidade:'Comprar',tipo:'Apartamento',bairro:'Ipanema',titulo:'Apartamento com vista lateral para o mar',preco:2850000,quartos:3,banheiros:3,area:142,imagens:['https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=85','https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=85','https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=1200&q=85'],destaque:true},
-  {id:2,finalidade:'Alugar',tipo:'Apartamento',bairro:'Leblon',titulo:'Apartamento reformado e iluminado',preco:9800,quartos:2,banheiros:2,area:96,imagens:['https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=85','https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1200&q=85'],destaque:true},
-  {id:3,finalidade:'Comprar',tipo:'Casa',bairro:'Jardim Botânico',titulo:'Casa contemporânea cercada pelo verde',preco:4200000,quartos:4,banheiros:5,area:310,imagens:['https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=1200&q=85','https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85']},
-  {id:4,finalidade:'Alugar',tipo:'Comercial',bairro:'Centro',titulo:'Conjunto comercial na Avenida Rio Branco',preco:6200,quartos:0,banheiros:2,area:118,imagens:['https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=85','https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=85']},
-  {id:5,finalidade:'Comprar',tipo:'Apartamento',bairro:'Botafogo',titulo:'Cobertura duplex com área externa',preco:2350000,quartos:3,banheiros:4,area:198,imagens:['https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=1200&q=85','https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=85']},
-  {id:6,finalidade:'Alugar',tipo:'Apartamento',bairro:'Flamengo',titulo:'Apartamento amplo próximo ao Aterro',preco:5400,quartos:3,banheiros:2,area:126,imagens:['https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1200&q=85']}
-];
+export type ApiImage = { url: string | null; alt_text: string; order: number; is_cover: boolean; width: number | null; height: number | null };
+export type ApiProperty = {
+  id: string; title: string; description: string; purpose: 'sale' | 'rent'; purpose_label: string;
+  property_type: string; property_type_label: string; price: string | null; price_display: string;
+  condominium_fee: string | null; total_area: string; bedrooms: number | null; suites: number | null;
+  bathrooms: number | null; parking_spaces: number | null; is_featured: boolean; images: ApiImage[];
+  address: { neighborhood: string; city: string; state: string; display: string };
+  map: { visible: boolean; latitude?: string; longitude?: string };
+};
+export type PropertyPage = { count: number; next: string | null; previous: string | null; results: ApiProperty[] };
+export type FilterOptions = {
+  purposes: { value: string; label: string }[];
+  property_types: { value: string; label: string }[];
+  cities: string[];
+  neighborhoods: string[];
+};
+export const emptyFilters: FilterOptions = { purposes: [], property_types: [], cities: [], neighborhoods: [] };
+
+function apiBaseUrl() {
+  const configured = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, '');
+  if (configured) return configured;
+  if (typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)) return 'http://127.0.0.1:8000';
+  throw new Error('O endereço público da API ainda não foi configurado.');
+}
+
+async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`${apiBaseUrl()}${path}`, { signal, headers: { Accept: 'application/json' } });
+  if (!response.ok) throw new Error(`A API respondeu com o código ${response.status}.`);
+  return response.json() as Promise<T>;
+}
+
+export function fetchProperties(params: URLSearchParams, signal?: AbortSignal) {
+  const query = params.toString();
+  return request<PropertyPage>(`/api/v1/properties/${query ? `?${query}` : ''}`, signal);
+}
+export function fetchFilterOptions(signal?: AbortSignal) {
+  return request<FilterOptions>('/api/v1/properties/filters/', signal);
+}
+export function fetchProperty(id: string, signal?: AbortSignal) {
+  return request<ApiProperty>(`/api/v1/properties/${encodeURIComponent(id)}/`, signal);
+}
+
+export type InterestPayload = {
+  name: string;
+  phone: string;
+  email: string;
+  message: string;
+  consent: boolean;
+  website: string;
+};
+
+export async function submitInterest(id: string, payload: InterestPayload) {
+  const response = await fetch(`${apiBaseUrl()}/api/v1/properties/${encodeURIComponent(id)}/interest/`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({})) as Record<string, string | string[]>;
+  if (!response.ok) {
+    const message = Object.values(data).flat().join(' ');
+    throw new Error(message || 'Não foi possível enviar seu interesse.');
+  }
+}

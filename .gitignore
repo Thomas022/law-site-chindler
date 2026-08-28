@@ -4,4 +4,19 @@ dist/
 .vinext/
 .wrangler/
 .env*
+!.env.example
+!**/.env.example
 .DS_Store
+
+# Python / Django
+__pycache__/
+*.py[cod]
+*.sqlite3
+.venv/
+venv/
+backend/staticfiles/
+backend/media/
+backend/backups/
+.pytest_cache/
+.coverage
+*.tsbuildinfo

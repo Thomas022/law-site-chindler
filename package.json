@@ -10,7 +10,7 @@
     "build": "vinext build",
     "build:pages": "vinext build && node scripts/prepare-github-pages.mjs",
     "start": "vinext start",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next"
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern backend/.venv --ignore-pattern backend/staticfiles --ignore-pattern backend/media"
   },
   "dependencies": {
     "next": "16.2.6",

@@ -31,6 +31,7 @@ jobs:
         run: pnpm build:pages
         env:
           NEXT_PUBLIC_BASE_PATH: /law-site-chindler
+          NEXT_PUBLIC_API_URL: ${{ vars.API_URL }}
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v6
       - name: Enviar site gerado
