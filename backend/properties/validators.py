@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
+from django.db.models.fields.files import FieldFile
 from PIL import Image, UnidentifiedImageError
 
 
@@ -10,6 +11,12 @@ validate_image_extension = FileExtensionValidator(
 
 
 def validate_property_image(upload):
+    # Existing Cloudinary assets are stored by public_id, which intentionally has
+    # no file extension. They were already validated when first uploaded, so an
+    # unrelated edit must not try to validate or reopen the remote file.
+    if isinstance(upload, FieldFile) and upload._committed:
+        return
+
     validate_image_extension(upload)
     content_type = getattr(upload, "content_type", None)
     if content_type and content_type not in {"image/jpeg", "image/png", "image/webp"}:

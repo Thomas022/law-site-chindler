@@ -103,6 +103,20 @@ class LocalImageStorageTests(TestCase):
 
         self.assertFalse(image.image.storage.exists(image_name))
 
+    def test_existing_cloudinary_public_id_does_not_require_a_new_upload(self):
+        image = PropertyImage.objects.create(
+            property=self.property_item,
+            image="properties/public-id/photo-without-extension",
+            order=0,
+            is_cover=True,
+        )
+
+        image.refresh_from_db()
+        image.alt_text = "Nova descrição da imagem"
+        image.full_clean()
+
+        self.assertEqual(image.image.name, "properties/public-id/photo-without-extension")
+
 
 class CloudinaryStorageTests(TestCase):
     @patch("chindler_backend.storage.cloudinary.uploader.upload")
