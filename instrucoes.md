@@ -176,6 +176,8 @@ As seguintes funcionalidades ficam planejadas para etapas futuras:
 
 Este documento representa as decisões da Etapa 1 — Planejamento da estrutura. Alterações futuras deverão ser registradas aqui antes de serem incorporadas ao desenvolvimento.
 
+O acompanhamento da evolução do módulo de atendimento está disponível em `TODO_INTERESSADOS.md`.
+
 ## 18. Etapa 2 — Preparação do Django
 
 Status: concluída.

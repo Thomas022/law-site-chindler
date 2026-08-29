@@ -1,0 +1,91 @@
+.lead-dashboard {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 16px;
+  margin: 20px 0 24px;
+}
+
+body.change-list .object-tools {
+  clear: both;
+  display: flex !important;
+  float: none !important;
+  justify-content: flex-end;
+  margin: 12px 0 18px !important;
+  position: static !important;
+  width: 100%;
+}
+
+body.change-list .object-tools li {
+  float: none;
+  height: auto;
+  margin: 0;
+}
+
+.lead-metric {
+  display: flex;
+  min-height: 76px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 14px 18px;
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--link-fg);
+  border-radius: 4px;
+  background: var(--darkened-bg);
+  color: var(--body-fg) !important;
+  text-decoration: none !important;
+}
+
+.lead-metric:hover {
+  border-color: var(--link-hover-color);
+  background: var(--selected-row);
+}
+
+.lead-metric__label {
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.lead-metric strong {
+  font-size: 27px;
+  line-height: 1;
+}
+
+.lead-metric--progress { border-left-color: #d7a928; }
+.lead-metric--visit { border-left-color: #1ca8ad; }
+.lead-metric--overdue { border-left-color: #dc5b62; }
+.lead-metric--progress strong { color: #d7a928; }
+.lead-metric--visit strong { color: #1ca8ad; }
+.lead-metric--overdue strong { color: #dc5b62; }
+
+.lead-status {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.lead-status--new { background: #174b7a; color: #d9efff; }
+.lead-status--in_progress { background: #684f08; color: #ffe39a; }
+.lead-status--visit_scheduled { background: #07565c; color: #b8f5f6; }
+.lead-status--completed { background: #245d2b; color: #c9f4cf; }
+.lead-status--discarded { background: #5e3437; color: #ffdadd; }
+
+.lead-next-action--overdue {
+  color: #ff7b82;
+  font-weight: 700;
+}
+
+.inline-group.collapse {
+  margin-top: 18px;
+}
+
+@media (max-width: 900px) {
+  .lead-dashboard { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
+}
+
+@media (max-width: 520px) {
+  .lead-dashboard { grid-template-columns: 1fr; gap: 10px; }
+  .lead-metric { min-height: 58px; }
+}

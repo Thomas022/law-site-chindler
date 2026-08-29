@@ -22,8 +22,14 @@ def ensure_default_roles(**_kwargs):
             "delete_propertyimage",
             "view_propertyimage",
             "view_propertychange",
+            "add_lead",
             "change_lead",
             "view_lead",
+            "add_leadinteraction",
+            "view_leadinteraction",
+            "add_leadtask",
+            "change_leadtask",
+            "view_leadtask",
         },
     )
     editor.permissions.set(editor_permissions)

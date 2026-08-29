@@ -50,4 +50,10 @@ O comando solicitará a senha sem mostrá-la. Depois, abra `https://ENDERECO-DO-
 - o formulário deve criar um interessado no painel;
 - durante o teste, execute manualmente `python manage.py anonymize_expired_leads --settings=chindler_backend.settings.production` em um ambiente conectado ao banco quando for necessário testar a anonimização.
 
+## Atualização do módulo de interessados
+
+O comando de inicialização aplica automaticamente as migrações pendentes antes de iniciar o Gunicorn. As migrações `leads.0002` e `leads.0003` acrescentam histórico, tarefas, prioridade, origem e cadastro manual sem remover os contatos existentes.
+
+Depois de publicar uma nova versão, confirme nos logs que as duas migrações terminaram com `OK`. Em seguida, abra **Interessados** no painel e valide os indicadores, o cadastro manual e a página individual antes de liberar o uso para toda a equipe.
+
 O imóvel e a fotografia cadastrados localmente não são copiados automaticamente. O caminho mais seguro para o primeiro lançamento é cadastrá-los novamente no painel de produção, fazendo com que as imagens já sejam enviadas ao Cloudinary.

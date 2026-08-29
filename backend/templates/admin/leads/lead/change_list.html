@@ -1,0 +1,37 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'leads/admin.css' %}?v=2">
+  <style>
+    .lead-object-tools-row { clear: both; display: flex; justify-content: flex-start; margin: 12px 0 18px; width: 100%; }
+    .lead-object-tools-row .object-tools { display: flex !important; float: none !important; margin: 0 !important; position: static !important; }
+  </style>
+{% endblock %}
+
+{% block object-tools %}
+  <div class="lead-object-tools-row">{{ block.super }}</div>
+{% endblock %}
+
+{% block content_title %}
+  {{ block.super }}
+  <div class="lead-dashboard" aria-label="Resumo dos atendimentos">
+    <a class="lead-metric lead-metric--new" href="?status__exact=new">
+      <span class="lead-metric__label">Novos</span>
+      <strong>{{ lead_counts.new }}</strong>
+    </a>
+    <a class="lead-metric lead-metric--progress" href="?status__exact=in_progress">
+      <span class="lead-metric__label">Em atendimento</span>
+      <strong>{{ lead_counts.in_progress }}</strong>
+    </a>
+    <a class="lead-metric lead-metric--visit" href="?status__exact=visit_scheduled">
+      <span class="lead-metric__label">Visitas agendadas</span>
+      <strong>{{ lead_counts.visits }}</strong>
+    </a>
+    <a class="lead-metric lead-metric--overdue" href="?next_action=overdue">
+      <span class="lead-metric__label">Atrasados</span>
+      <strong>{{ lead_counts.overdue }}</strong>
+    </a>
+  </div>
+{% endblock %}

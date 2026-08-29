@@ -27,5 +27,10 @@ def anonymize_lead(lead):
             "updated_at",
         )
     )
+    lead.interactions.update(
+        description="Conteúdo removido após o prazo de retenção.",
+        outcome="",
+        created_by=None,
+    )
+    lead.tasks.update(notes="", responsible=None, created_by=None)
     return True
-
