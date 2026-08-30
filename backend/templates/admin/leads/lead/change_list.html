@@ -1,13 +1,14 @@
 {% extends "admin/change_list.html" %}
-{% load i18n admin_urls static %}
+{% load i18n admin_urls static admin_list %}
 
 {% block extrastyle %}
   {{ block.super }}
-  <link rel="stylesheet" href="{% static 'leads/admin.css' %}?v=2">
-  <style>
-    .lead-object-tools-row { clear: both; display: flex; justify-content: flex-start; margin: 12px 0 18px; width: 100%; }
-    .lead-object-tools-row .object-tools { display: flex !important; float: none !important; margin: 0 !important; position: static !important; }
-  </style>
+  <link rel="stylesheet" href="{% static 'leads/admin.css' %}?v=5">
+{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <script src="{% static 'leads/admin-list.js' %}" defer></script>
 {% endblock %}
 
 {% block object-tools %}
@@ -15,23 +16,65 @@
 {% endblock %}
 
 {% block content_title %}
-  {{ block.super }}
+  <h1>Interessados</h1>
   <div class="lead-dashboard" aria-label="Resumo dos atendimentos">
-    <a class="lead-metric lead-metric--new" href="?status__exact=new">
+    <a class="lead-metric lead-metric--new{% if request.GET.status__exact == 'new' %} is-active{% endif %}" href="?status__exact=new">
       <span class="lead-metric__label">Novos</span>
       <strong>{{ lead_counts.new }}</strong>
     </a>
-    <a class="lead-metric lead-metric--progress" href="?status__exact=in_progress">
+    <a class="lead-metric lead-metric--progress{% if request.GET.status__exact == 'in_progress' %} is-active{% endif %}" href="?status__exact=in_progress">
       <span class="lead-metric__label">Em atendimento</span>
       <strong>{{ lead_counts.in_progress }}</strong>
     </a>
-    <a class="lead-metric lead-metric--visit" href="?status__exact=visit_scheduled">
+    <a class="lead-metric lead-metric--visit{% if request.GET.status__exact == 'visit_scheduled' %} is-active{% endif %}" href="?status__exact=visit_scheduled">
       <span class="lead-metric__label">Visitas agendadas</span>
       <strong>{{ lead_counts.visits }}</strong>
     </a>
-    <a class="lead-metric lead-metric--overdue" href="?next_action=overdue">
-      <span class="lead-metric__label">Atrasados</span>
-      <strong>{{ lead_counts.overdue }}</strong>
+    <a class="lead-metric lead-metric--completed{% if request.GET.status__exact == 'completed' %} is-active{% endif %}" href="?status__exact=completed">
+      <span class="lead-metric__label">Concluídos</span>
+      <strong>{{ lead_counts.completed }}</strong>
     </a>
   </div>
+{% endblock %}
+
+{% block search %}
+  {% if cl.search_fields %}
+    <div id="toolbar" class="lead-search-toolbar">
+      <form id="changelist-search" method="get" role="search">
+        <label class="visually-hidden" for="searchbar">Pesquisar interessados</label>
+        <input
+          type="text"
+          name="q"
+          value="{{ cl.query }}"
+          id="searchbar"
+          placeholder="Pesquisar por nome, telefone, e-mail ou imóvel"
+        >
+        <input type="submit" value="Pesquisar">
+        {% for pair in cl.params.items %}
+          {% if pair.0 != "q" %}<input type="hidden" name="{{ pair.0 }}" value="{{ pair.1 }}">{% endif %}
+        {% endfor %}
+      </form>
+    </div>
+  {% endif %}
+
+{% endblock %}
+
+{% block filters %}
+  {% if cl.has_filters %}
+    <section class="lead-filter-panel lead-filter-panel--below" aria-label="Filtros dos interessados">
+      <h2>Filtrar interessados</h2>
+      <div class="lead-filter-panel__controls">
+        {% for spec in cl.filter_specs %}{% admin_list_filter cl spec %}{% endfor %}
+      </div>
+      {% if cl.has_active_filters %}
+        <div class="lead-active-filters">
+          <span class="lead-active-filters__label">Filtros ativos:</span>
+          {% for chip in active_filter_chips %}
+            <a class="lead-filter-chip" href="{{ chip.remove_url }}">{{ chip.title }}: {{ chip.value }} <span aria-hidden="true">×</span></a>
+          {% endfor %}
+          <a class="lead-clear-filters" href="{{ cl.clear_all_filters_qs }}">Limpar filtros</a>
+        </div>
+      {% endif %}
+    </section>
+  {% endif %}
 {% endblock %}

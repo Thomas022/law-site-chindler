@@ -1,0 +1,149 @@
+.property-dashboard {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  margin: 20px 0 24px;
+}
+
+.property-metric {
+  background: var(--body-bg);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--link-fg);
+  border-radius: 8px;
+  color: var(--body-fg) !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 76px;
+  padding: 14px 18px;
+  text-decoration: none !important;
+}
+
+.property-metric:hover { background: var(--selected-row); border-color: var(--link-hover-color); }
+.property-metric.is-active { box-shadow: 0 0 0 2px var(--link-fg); }
+.property-metric__label { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.property-metric strong { font-size: 27px; line-height: 1; }
+.property-metric--published { border-left-color: #4f8f5b; }
+.property-metric--published strong { color: #4f8f5b; }
+.property-metric--draft { border-left-color: #8b8b8b; }
+.property-metric--draft strong { color: #8b8b8b; }
+.property-metric--reserved { border-left-color: #d7a928; }
+.property-metric--reserved strong { color: #d7a928; }
+
+.property-object-tools-row {
+  clear: both;
+  display: flex;
+  justify-content: flex-end;
+  margin: 12px 0 18px;
+  width: 100%;
+}
+.property-object-tools-row .object-tools { margin: 0 !important; }
+
+.property-search-toolbar { border-radius: 8px 8px 0 0; padding: 16px !important; }
+.property-search-toolbar #changelist-search { align-items: center; display: flex; gap: 10px; max-width: none; }
+.property-search-toolbar #searchbar {
+  background: var(--body-bg);
+  border-radius: 6px;
+  color: var(--body-fg);
+  flex: 1 1 480px !important;
+  height: 40px;
+  max-width: 720px;
+  min-width: 240px;
+  padding: 0 14px;
+  width: min(720px, 100%) !important;
+}
+.property-search-toolbar #searchbar::placeholder { color: var(--body-quiet-color); opacity: 1; }
+.property-search-toolbar input[type="submit"] { height: 40px; padding: 0 22px; }
+
+.property-filter-panel {
+  background: var(--body-bg);
+  border-top: 1px solid var(--hairline-color);
+  margin-top: 18px;
+  padding: 16px;
+}
+.property-filter-panel h2 { font-size: 14px; margin: 0 0 12px; }
+#changelist.filtered .changelist-form-container { width: 100%; }
+.model-property.change-list #changelist,
+.model-propertychange.change-list #changelist {
+  align-items: stretch;
+  flex-direction: column;
+}
+.property-filter-panel__controls { display: flex; flex-wrap: wrap; gap: 10px; }
+.property-filter-panel details {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  min-width: 145px;
+  position: relative;
+}
+.property-filter-panel details summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+  padding: 10px 32px 10px 12px;
+  white-space: nowrap;
+}
+.property-filter-panel details summary::after { content: "⌄"; position: absolute; right: 11px; }
+.property-filter-panel details[open] ul {
+  background: var(--body-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 8px 22px rgb(0 0 0 / 14%);
+  left: 0;
+  margin: 4px 0 0;
+  max-height: 280px;
+  min-width: 210px;
+  overflow: auto;
+  padding: 8px;
+  position: absolute;
+  top: 100%;
+  z-index: 20;
+}
+.property-filter-panel details li { list-style: none; }
+.property-filter-panel details li a { border-radius: 4px; display: block; padding: 7px 9px; }
+.property-filter-panel details li.selected a { background: var(--selected-row); font-weight: 700; }
+
+.property-active-filters { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.property-active-filters__label { color: var(--body-quiet-color); font-size: 12px; font-weight: 700; }
+.property-filter-chip { background: #f8ecef; border: 1px solid #e8cbd2; border-radius: 999px; color: #7b2638 !important; padding: 5px 10px; text-decoration: none !important; }
+.property-clear-filters { font-weight: 600; margin-left: 4px; }
+
+.property-listing { align-items: center; display: flex; gap: 10px; min-width: 250px; }
+.property-listing__image { border-radius: 5px; height: 52px; object-fit: cover; width: 72px; }
+.property-listing__copy, .property-secondary { display: block; }
+.property-secondary { color: var(--body-quiet-color); font-size: 12px; margin-top: 4px; }
+.property-featured { color: #b58a16; display: block; font-size: 11px; font-weight: 700; margin-top: 4px; text-transform: uppercase; }
+.property-purpose, .property-status { border-radius: 4px; display: inline-block; font-weight: 700; padding: 3px 8px; white-space: nowrap; }
+.property-purpose--sale { background: #174b7a; color: #d9efff; }
+.property-purpose--rent { background: #684f08; color: #ffe39a; }
+.property-status--draft { background: #4a4a4a; color: #eeeeee; }
+.property-status--published { background: #245d2b; color: #c9f4cf; }
+.property-status--reserved { background: #684f08; color: #ffe39a; }
+.property-status--sold, .property-status--rented { background: #174b7a; color: #d9efff; }
+.property-status--archived, .property-status--trashed { background: #5e3437; color: #ffdadd; }
+.property-row-actions { display: flex; gap: 5px; }
+.property-row-action { border: 1px solid var(--border-color); border-radius: 4px; font-size: 11px; padding: 4px 8px; text-decoration: none !important; }
+.property-row-action--open { border-color: #b9828f; color: #7b2638 !important; font-weight: 700; }
+
+#result_list tbody tr:hover { background: var(--selected-row); }
+#result_list td, #result_list th { vertical-align: middle; }
+#result_list .field-property_summary { min-width: 250px; }
+
+@media (max-width: 900px) {
+  .property-dashboard { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
+  .property-filter-panel__controls { display: grid; grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+  .property-filter-panel details { min-width: 0; }
+  .property-search-toolbar #changelist-search { align-items: stretch; flex-direction: column; }
+  .property-search-toolbar #searchbar {
+    box-sizing: border-box;
+    flex: 0 0 40px !important;
+    max-width: none;
+    min-width: 0;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .property-dashboard { gap: 10px; grid-template-columns: 1fr; }
+  .property-metric { min-height: 58px; }
+  .property-filter-panel__controls { grid-template-columns: 1fr; }
+}

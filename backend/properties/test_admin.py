@@ -77,6 +77,27 @@ class AdminPermissionTests(TestCase):
         response = self.client.get(reverse("admin:auth_user_changelist"))
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Filtrar usuários")
+        self.assertContains(response, "Filtros dos usuários")
+        rendered = response.content.decode()
+        self.assertLess(
+            rendered.index('class="paginator"'),
+            rendered.index('class="user-filter-panel user-filter-panel--below"'),
+        )
+
+    def test_user_change_page_hides_password_hash_details(self):
+        self.client.force_login(self.administrator)
+
+        response = self.client.get(
+            reverse("admin:auth_user_change", args=(self.administrator.pk,))
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Alterar senha")
+        self.assertNotContains(response, "pbkdf2_sha256")
+        self.assertNotContains(response, "iterações")
+        self.assertNotContains(response, "salt")
+        self.assertNotContains(response, "hash")
 
     def test_property_form_contains_image_gallery(self):
         self.client.force_login(self.editor)
@@ -86,6 +107,57 @@ class AdminPermissionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Informações principais")
         self.assertContains(response, "Imagem")
+
+    def test_property_list_uses_operational_dashboard_search_and_filters(self):
+        property_item = Property.objects.create(
+            title="Apartamento de teste no Leblon",
+            description="Imóvel criado para validar o painel.",
+            purpose=Property.Purpose.SALE,
+            property_type=Property.PropertyType.APARTMENT,
+            status=Property.Status.PUBLISHED,
+            price="1250000.00",
+            total_area="95.00",
+            street="Rua Dias Ferreira",
+            number="100",
+            neighborhood="Leblon",
+            city="Rio de Janeiro",
+            created_by=self.editor,
+            updated_by=self.editor,
+        )
+        self.client.force_login(self.editor)
+
+        response = self.client.get(reverse("admin:properties_property_changelist"))
+        search = self.client.get(
+            reverse("admin:properties_property_changelist"), {"q": "Leblon"}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "<h1>Imóveis</h1>", html=True)
+        self.assertContains(response, "Resumo dos imóveis")
+        self.assertContains(response, "Pesquisar por título, descrição, rua, bairro ou cidade")
+        self.assertContains(response, "Filtros dos imóveis")
+        self.assertContains(response, "Filtrar imóveis")
+        self.assertContains(response, "Publicados")
+        self.assertContains(response, "Abrir")
+        self.assertEqual(response.context["property_counts"]["active"], 1)
+        self.assertEqual(response.context["property_counts"]["published"], 1)
+        self.assertContains(search, property_item.title)
+
+    def test_property_change_filters_follow_the_same_bottom_layout(self):
+        self.client.force_login(self.editor)
+
+        response = self.client.get(
+            reverse("admin:properties_propertychange_changelist")
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Filtrar alterações")
+        self.assertContains(response, "Filtros das alterações dos imóveis")
+        rendered = response.content.decode()
+        self.assertLess(
+            rendered.index('class="paginator"'),
+            rendered.index('class="property-filter-panel property-filter-panel--below"'),
+        )
 
     def test_new_image_with_repeated_default_order_receives_next_free_order(self):
         media_directory = TemporaryDirectory()

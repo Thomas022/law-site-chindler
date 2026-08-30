@@ -1,9 +1,13 @@
 import csv
 
 from django.contrib import admin, messages
+from django.contrib.auth import get_user_model
+from django.contrib.auth.admin import UserAdmin
 from django.core.exceptions import ValidationError
+from django.db.models import Count, Prefetch, Q
 from django.forms.models import BaseInlineFormSet
 from django.http import HttpResponse
+from django.urls import reverse
 from django.utils.html import format_html
 
 from chindler_backend.forms import EmailOrUsernameAuthenticationForm
@@ -129,16 +133,15 @@ class TrashFilter(admin.SimpleListFilter):
 
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
+    change_list_template = "admin/properties/property/change_list.html"
     list_display = (
-        "title",
-        "purpose",
-        "property_type",
-        "status",
-        "neighborhood",
+        "property_summary",
+        "category_summary",
+        "status_summary",
+        "location_summary",
         "formatted_price",
-        "is_featured",
-        "updated_at",
-        "trash_state",
+        "updated_summary",
+        "row_actions",
     )
     list_filter = (
         TrashFilter,
@@ -150,6 +153,7 @@ class PropertyAdmin(admin.ModelAdmin):
         "neighborhood",
     )
     search_fields = ("title", "description", "street", "neighborhood", "city")
+    search_help_text = "Pesquise por título, descrição, rua, bairro ou cidade."
     ordering = ("-is_featured", "featured_order", "-created_at")
     readonly_fields = (
         "public_id",
@@ -247,6 +251,119 @@ class PropertyAdmin(admin.ModelAdmin):
         "export_csv",
     )
     save_on_top = True
+
+    def get_queryset(self, request):
+        cover_images = PropertyImage.objects.filter(is_cover=True).order_by("order")
+        return super().get_queryset(request).prefetch_related(
+            Prefetch("images", queryset=cover_images, to_attr="cover_images")
+        )
+
+    @admin.display(description="Imóvel", ordering="title")
+    def property_summary(self, obj):
+        cover_images = getattr(obj, "cover_images", ())
+        image = cover_images[0] if cover_images else None
+        image_html = ""
+        if image:
+            image_html = format_html(
+                '<img class="property-listing__image" src="{}" alt="">',
+                image.thumbnail_url,
+            )
+        featured = format_html(
+            '<span class="property-featured">Destaque</span>'
+        ) if obj.is_featured else ""
+        return format_html(
+            '<span class="property-listing">{}<span class="property-listing__copy">'
+            '<strong>{}</strong>{}</span></span>',
+            image_html,
+            obj.title,
+            featured,
+        )
+
+    @admin.display(description="Finalidade e tipo", ordering="purpose")
+    def category_summary(self, obj):
+        return format_html(
+            '<span class="property-purpose property-purpose--{}">{}</span>'
+            '<span class="property-secondary">{}</span>',
+            obj.purpose,
+            obj.get_purpose_display(),
+            obj.get_property_type_display(),
+        )
+
+    @admin.display(description="Situação", ordering="status")
+    def status_summary(self, obj):
+        if obj.deleted_at:
+            return format_html('<span class="property-status property-status--trashed">Na lixeira</span>')
+        return format_html(
+            '<span class="property-status property-status--{}">{}</span>',
+            obj.status,
+            obj.get_status_display(),
+        )
+
+    @admin.display(description="Localização", ordering="neighborhood")
+    def location_summary(self, obj):
+        return format_html(
+            '<strong>{}</strong><span class="property-secondary">{} · {}</span>',
+            obj.neighborhood,
+            obj.city,
+            obj.state,
+        )
+
+    @admin.display(description="Atualizado em", ordering="updated_at")
+    def updated_summary(self, obj):
+        return format_html(
+            '<span>{}</span><span class="property-secondary">{}</span>',
+            obj.updated_at.strftime("%d/%m/%Y"),
+            obj.updated_at.strftime("%H:%M"),
+        )
+
+    @admin.display(description="Ações")
+    def row_actions(self, obj):
+        return format_html(
+            '<span class="property-row-actions">'
+            '<a class="property-row-action property-row-action--open" href="{}">Abrir</a>'
+            '</span>',
+            reverse("admin:properties_property_change", args=(obj.pk,)),
+        )
+
+    def changelist_view(self, request, extra_context=None):
+        base = self.model.objects.filter(deleted_at__isnull=True)
+        counts = base.aggregate(
+            active=Count("id", distinct=True),
+            published=Count(
+                "id", filter=Q(status=Property.Status.PUBLISHED), distinct=True
+            ),
+            draft=Count("id", filter=Q(status=Property.Status.DRAFT), distinct=True),
+            reserved=Count(
+                "id", filter=Q(status=Property.Status.RESERVED), distinct=True
+            ),
+        )
+        active_filter_chips = []
+        filter_options = {
+            "trash": ("Lixeira", {"active": "Ativos", "trashed": "Na lixeira"}),
+            "status__exact": ("Situação", dict(Property.Status.choices)),
+            "purpose__exact": ("Finalidade", dict(Property.Purpose.choices)),
+            "property_type__exact": ("Tipo", dict(Property.PropertyType.choices)),
+            "is_featured__exact": ("Destaque", {"1": "Sim", "0": "Não"}),
+        }
+        for parameter, (title, choices) in filter_options.items():
+            value = request.GET.get(parameter)
+            if value is None or value == "":
+                continue
+            remaining = request.GET.copy()
+            remaining.pop(parameter, None)
+            active_filter_chips.append(
+                {
+                    "title": title,
+                    "value": choices.get(value, value),
+                    "remove_url": f"?{remaining.urlencode()}" if remaining else "?",
+                }
+            )
+        extra_context = {
+            **(extra_context or {}),
+            "property_counts": counts,
+            "active_filter_chips": active_filter_chips,
+        }
+        return super().changelist_view(request, extra_context=extra_context)
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
@@ -393,6 +510,7 @@ class PropertyAdmin(admin.ModelAdmin):
 
 @admin.register(PropertyChange)
 class PropertyChangeAdmin(admin.ModelAdmin):
+    change_list_template = "admin/properties/propertychange/change_list.html"
     list_display = ("property_title", "action", "actor", "created_at")
     list_filter = ("action", "created_at")
     search_fields = ("property_title", "actor__username", "actor__email")
@@ -406,6 +524,42 @@ class PropertyChangeAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+class ChindlerUserAdmin(UserAdmin):
+    change_list_template = "admin/auth/user/change_list.html"
+    fieldsets = (
+        (None, {"fields": ("username", "password_change_link")}),
+        ("Informações pessoais", {"fields": ("first_name", "last_name", "email")}),
+        (
+            "Permissões",
+            {
+                "fields": (
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions",
+                ),
+            },
+        ),
+        ("Datas importantes", {"fields": ("last_login", "date_joined")}),
+    )
+    readonly_fields = (*UserAdmin.readonly_fields, "password_change_link")
+
+    @admin.display(description="Senha")
+    def password_change_link(self, obj):
+        if not obj or not obj.pk:
+            return "A senha poderá ser definida após salvar o usuário."
+        return format_html(
+            '<a class="button" href="{}">Alterar senha</a>',
+            reverse("admin:auth_user_password_change", args=(obj.pk,)),
+        )
+
+
+User = get_user_model()
+admin.site.unregister(User)
+admin.site.register(User, ChindlerUserAdmin)
 
 
 admin.site.site_header = "Balcão de Imóveis"

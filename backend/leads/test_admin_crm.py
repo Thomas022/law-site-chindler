@@ -2,7 +2,9 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib import admin
+from django.contrib.admin.models import CHANGE, DELETION, LogEntry
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -74,26 +76,14 @@ class LeadCrmAdminTests(TestCase):
         self.assertEqual(self.lead.interactions.get(), interaction)
         self.assertEqual(list(self.lead.tasks.all()), [first, second])
 
-    def test_discard_requires_reason(self):
-        form = LeadAdminForm(
-            data={
-                "property": self.property_item.pk,
-                "property_title": self.property_item.title,
-                "name": self.lead.name,
-                "phone": self.lead.phone,
-                "email": self.lead.email,
-                "message": self.lead.message,
-                "status": Lead.Status.DISCARDED,
-                "priority": Lead.Priority.NORMAL,
-                "source": Lead.Source.WEBSITE,
-                "consent_version": "1.0",
-                "consent_at": timezone.now(),
-            },
-            instance=self.lead,
+    def test_current_status_section_does_not_show_discard_reason(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(
+            reverse("admin:leads_lead_change", args=[self.lead.pk])
         )
 
-        self.assertFalse(form.is_valid())
-        self.assertIn("discard_reason", form.errors)
+        self.assertNotContains(response, "Motivo do descarte")
 
     def test_admin_records_status_and_assignment_history(self):
         request = self.factory.post("/admin/leads/lead/")
@@ -126,9 +116,111 @@ class LeadCrmAdminTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Novos")
         self.assertContains(response, "Visitas agendadas")
-        self.assertContains(response, "Atrasados")
+        self.assertContains(response, "Concluídos")
+        self.assertContains(response, "<h1>Interessados</h1>", html=True)
+        self.assertContains(response, "?status__exact=completed")
         self.assertContains(response, "Ligação")
         self.assertContains(response, "lead-status--new")
+        self.assertContains(response, "Pesquisar por nome, telefone, e-mail ou imóvel")
+        self.assertContains(response, 'name="q"')
+        self.assertContains(response, "Filtros dos interessados")
+        self.assertContains(response, "Filtrar interessados")
+        self.assertContains(response, "Abrir")
+        self.assertIsNone(self.admin.date_hierarchy)
+        rendered = response.content.decode()
+        self.assertLess(
+            rendered.index('class="paginator"'),
+            rendered.index('class="lead-filter-panel lead-filter-panel--below"'),
+        )
+
+    def test_completed_dashboard_metric_counts_and_filters_completed_leads(self):
+        self.lead.status = Lead.Status.COMPLETED
+        self.lead.completed_at = timezone.now()
+        self.lead.save(update_fields=("status", "completed_at"))
+        Lead.objects.create(
+            property_title="Interesse ainda em atendimento",
+            name="Contato em andamento",
+            email="andamento@example.com",
+            message="Ainda não concluído.",
+            status=Lead.Status.IN_PROGRESS,
+        )
+        self.client.force_login(self.user)
+
+        dashboard = self.client.get(reverse("admin:leads_lead_changelist"))
+        completed = self.client.get(
+            reverse("admin:leads_lead_changelist"),
+            {"status__exact": Lead.Status.COMPLETED},
+        )
+
+        self.assertEqual(dashboard.context["lead_counts"]["completed"], 1)
+        self.assertContains(completed, self.lead.name)
+        self.assertNotContains(completed, "Contato em andamento")
+
+    def test_admin_dashboard_shows_only_current_users_three_latest_actions(self):
+        content_type = ContentType.objects.get_for_model(Lead)
+        other_user = get_user_model().objects.create_superuser(
+            username="other-admin",
+            email="other@example.com",
+            password="other-password-123",
+        )
+        for index in range(1, 5):
+            LogEntry.objects.create(
+                user=self.user,
+                content_type=content_type,
+                object_id=str(self.lead.pk),
+                object_repr=f"Minha ação {index}",
+                action_flag=CHANGE,
+                change_message="Teste",
+            )
+        LogEntry.objects.create(
+            user=other_user,
+            content_type=content_type,
+            object_id=str(self.lead.pk),
+            object_repr="Ação de outro usuário",
+            action_flag=CHANGE,
+            change_message="Teste",
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("admin:index"))
+
+        self.assertNotContains(response, "Minha ação 1")
+        self.assertContains(response, "Minha ação 2")
+        self.assertContains(response, "Minha ação 3")
+        self.assertContains(response, "Minha ação 4")
+        self.assertNotContains(response, "Ação de outro usuário")
+
+    def test_dashboard_counts_each_lead_once_when_it_has_multiple_tasks(self):
+        self.lead.status = Lead.Status.IN_PROGRESS
+        self.lead.save(update_fields=("status",))
+        LeadTask.objects.create(
+            lead=self.lead,
+            kind=LeadTask.Kind.CALL,
+            due_at=timezone.now() - timedelta(hours=1),
+            status=LeadTask.Status.COMPLETED,
+            completed_at=timezone.now(),
+            responsible=self.user,
+            created_by=self.user,
+        )
+        LeadTask.objects.create(
+            lead=self.lead,
+            kind=LeadTask.Kind.FOLLOW_UP,
+            due_at=timezone.now() + timedelta(hours=1),
+            responsible=self.user,
+            created_by=self.user,
+        )
+        LeadTask.objects.create(
+            lead=self.lead,
+            kind=LeadTask.Kind.EMAIL,
+            due_at=timezone.now() + timedelta(hours=2),
+            responsible=self.user,
+            created_by=self.user,
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("admin:leads_lead_changelist"))
+
+        self.assertEqual(response.context["lead_counts"]["in_progress"], 1)
 
     def test_individual_page_contains_tasks_history_and_contact_actions(self):
         LeadTask.objects.create(
@@ -209,3 +301,42 @@ class LeadCrmAdminTests(TestCase):
 
         self.assertNotContains(dashboard, self.lead.name)
         self.assertContains(discarded, self.lead.name)
+
+    def test_removal_dialog_requires_reason_and_confirmation(self):
+        self.client.force_login(self.user)
+        url = reverse("admin:leads_lead_delete", args=[self.lead.pk])
+
+        response = self.client.get(url)
+        missing_reason = self.client.post(
+            url, {"post": "yes", "confirm_removal": "yes"}
+        )
+        missing_confirmation = self.client.post(
+            url, {"post": "yes", "removal_reason": "Contato duplicado."}
+        )
+
+        self.assertContains(response, "Motivo de remover")
+        self.assertContains(response, 'aria-label="Fechar"')
+        self.assertContains(response, 'name="confirm_removal"')
+        self.assertEqual(missing_reason.status_code, 200)
+        self.assertEqual(missing_confirmation.status_code, 200)
+        self.assertTrue(Lead.objects.filter(pk=self.lead.pk).exists())
+
+    def test_confirmed_removal_deletes_and_logs_reason(self):
+        self.client.force_login(self.user)
+        lead_pk = self.lead.pk
+
+        response = self.client.post(
+            reverse("admin:leads_lead_delete", args=[lead_pk]),
+            {
+                "post": "yes",
+                "removal_reason": "Solicitação duplicada recebida pelo site.",
+                "confirm_removal": "yes",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Lead.objects.filter(pk=lead_pk).exists())
+        log = LogEntry.objects.filter(
+            object_id=str(lead_pk), action_flag=DELETION
+        ).latest("action_time")
+        self.assertIn("Solicitação duplicada", log.change_message)

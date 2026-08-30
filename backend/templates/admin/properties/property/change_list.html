@@ -1,0 +1,80 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'properties/admin-list.css' %}?v=2">
+{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <script src="{% static 'properties/admin-list.js' %}" defer></script>
+{% endblock %}
+
+{% block object-tools %}
+  <div class="property-object-tools-row">{{ block.super }}</div>
+{% endblock %}
+
+{% block content_title %}
+  <h1>Imóveis</h1>
+  <div class="property-dashboard" aria-label="Resumo dos imóveis">
+    <a class="property-metric{% if request.GET.trash == 'active' %} is-active{% endif %}" href="?trash=active">
+      <span class="property-metric__label">Ativos</span>
+      <strong>{{ property_counts.active }}</strong>
+    </a>
+    <a class="property-metric property-metric--published{% if request.GET.status__exact == 'published' %} is-active{% endif %}" href="?status__exact=published">
+      <span class="property-metric__label">Publicados</span>
+      <strong>{{ property_counts.published }}</strong>
+    </a>
+    <a class="property-metric property-metric--draft{% if request.GET.status__exact == 'draft' %} is-active{% endif %}" href="?status__exact=draft">
+      <span class="property-metric__label">Rascunhos</span>
+      <strong>{{ property_counts.draft }}</strong>
+    </a>
+    <a class="property-metric property-metric--reserved{% if request.GET.status__exact == 'reserved' %} is-active{% endif %}" href="?status__exact=reserved">
+      <span class="property-metric__label">Reservados</span>
+      <strong>{{ property_counts.reserved }}</strong>
+    </a>
+  </div>
+{% endblock %}
+
+{% block search %}
+  {% if cl.search_fields %}
+    <div id="toolbar" class="property-search-toolbar">
+      <form id="changelist-search" method="get" role="search">
+        <label class="visually-hidden" for="searchbar">Pesquisar imóveis</label>
+        <input
+          type="text"
+          name="q"
+          value="{{ cl.query }}"
+          id="searchbar"
+          placeholder="Pesquisar por título, descrição, rua, bairro ou cidade"
+        >
+        <input type="submit" value="Pesquisar">
+        {% for pair in cl.params.items %}
+          {% if pair.0 != "q" %}<input type="hidden" name="{{ pair.0 }}" value="{{ pair.1 }}">{% endif %}
+        {% endfor %}
+      </form>
+    </div>
+  {% endif %}
+
+{% endblock %}
+
+{% block filters %}
+  {% if cl.has_filters %}
+    <section class="property-filter-panel property-filter-panel--below" aria-label="Filtros dos imóveis">
+      <h2>Filtrar imóveis</h2>
+      <div class="property-filter-panel__controls">
+        {% for spec in cl.filter_specs %}{% admin_list_filter cl spec %}{% endfor %}
+      </div>
+      {% if cl.has_active_filters %}
+        <div class="property-active-filters">
+          <span class="property-active-filters__label">Filtros ativos:</span>
+          {% for chip in active_filter_chips %}
+            <a class="property-filter-chip" href="{{ chip.remove_url }}">{{ chip.title }}: {{ chip.value }} <span aria-hidden="true">×</span></a>
+          {% endfor %}
+          <a class="property-clear-filters" href="{{ cl.clear_all_filters_qs }}">Limpar filtros</a>
+        </div>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endblock %}

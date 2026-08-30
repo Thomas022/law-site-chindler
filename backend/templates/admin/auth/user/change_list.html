@@ -1,0 +1,29 @@
+{% extends "admin/change_list.html" %}
+{% load i18n static admin_list %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'properties/user-admin-list.css' %}?v=1">
+{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <script src="{% static 'properties/user-admin-list.js' %}" defer></script>
+{% endblock %}
+
+{% block filters %}
+  {% if cl.has_filters %}
+    <section class="user-filter-panel user-filter-panel--below" aria-label="Filtros dos usuários">
+      <h2>Filtrar usuários</h2>
+      <div class="user-filter-panel__controls">
+        {% for spec in cl.filter_specs %}{% admin_list_filter cl spec %}{% endfor %}
+      </div>
+      {% if cl.has_active_filters %}
+        <div class="user-active-filters">
+          <span>Existem filtros ativos nesta lista.</span>
+          <a class="user-clear-filters" href="{{ cl.clear_all_filters_qs }}">Limpar filtros</a>
+        </div>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endblock %}

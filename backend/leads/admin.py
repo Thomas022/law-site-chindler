@@ -1,11 +1,15 @@
 import csv
 
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.contrib.admin.models import DELETION, LogEntry
+from django.contrib.auth import get_user_model
 from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponse
+from django.http.request import QueryDict
+from django.urls import reverse
 from django.utils import timezone
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
 
 from properties.roles import ADMINISTRATOR_GROUP
 
@@ -17,14 +21,6 @@ class LeadAdminForm(forms.ModelForm):
     class Meta:
         model = Lead
         fields = "__all__"
-
-    def clean(self):
-        cleaned_data = super().clean()
-        if cleaned_data.get("status") == Lead.Status.DISCARDED and not cleaned_data.get(
-            "discard_reason", ""
-        ).strip():
-            self.add_error("discard_reason", "Informe o motivo do descarte.")
-        return cleaned_data
 
 
 class NextActionFilter(admin.SimpleListFilter):
@@ -86,13 +82,15 @@ class LeadTaskInline(admin.TabularInline):
 class LeadAdmin(admin.ModelAdmin):
     form = LeadAdminForm
     change_list_template = "admin/leads/lead/change_list.html"
+    delete_confirmation_template = "admin/leads/lead/delete_confirmation.html"
     list_display = (
-        "name",
-        "property_title",
-        "status_badge",
-        "responsible",
+        "interested_summary",
+        "property_summary",
+        "status_summary",
+        "responsible_summary",
         "next_action",
-        "created_at",
+        "received_at",
+        "row_actions",
     )
     list_filter = (
         "status",
@@ -104,9 +102,9 @@ class LeadAdmin(admin.ModelAdmin):
         "created_at",
     )
     search_fields = ("name", "email", "phone", "property_title")
+    search_help_text = "Pesquise por nome, telefone, e-mail ou imóvel."
     list_select_related = ("property", "responsible")
     list_per_page = 25
-    date_hierarchy = "created_at"
     inlines = (LeadTaskInline, LeadInteractionInline)
     readonly_fields = (
         "property",
@@ -131,7 +129,7 @@ class LeadAdmin(admin.ModelAdmin):
         ("Imóvel de interesse", {"fields": ("property", "property_title"), "classes": ("collapse",)}),
         (
             "Situação atual",
-            {"fields": (("status", "priority"), ("responsible", "source"), "next_action_summary", "discard_reason", ("last_interaction_at", "completed_at"))},
+            {"fields": (("status", "priority"), ("responsible", "source"), "next_action_summary", ("last_interaction_at", "completed_at"))},
         ),
         (
             "Privacidade e controle",
@@ -209,6 +207,51 @@ class LeadAdmin(admin.ModelAdmin):
             whatsapp_number,
         )
 
+    @admin.display(description="Interessado", ordering="name")
+    def interested_summary(self, obj):
+        contact = obj.email
+        if obj.phone:
+            contact = f"{obj.email} · {obj.phone}"
+        return format_html(
+            '<strong class="lead-person__name">{}</strong>'
+            '<span class="lead-person__contact">{}</span>',
+            obj.name,
+            contact,
+        )
+
+    @admin.display(description="Imóvel", ordering="property_title")
+    def property_summary(self, obj):
+        title = obj.property_title or "Interesse geral"
+        if obj.property:
+            location = " · ".join(
+                value for value in (obj.property.neighborhood, obj.property.city) if value
+            )
+            if location:
+                return format_html(
+                    '<strong class="lead-property__title">{}</strong>'
+                    '<span class="lead-property__location">{}</span>',
+                    title,
+                    location,
+                )
+        return format_html('<strong class="lead-property__title">{}</strong>', title)
+
+    @admin.display(description="Situação", ordering="status")
+    def status_summary(self, obj):
+        return format_html(
+            '<span class="lead-status lead-status--{}">{}</span>'
+            '<span class="lead-priority lead-priority--{}">Prioridade {}</span>',
+            obj.status,
+            obj.get_status_display(),
+            obj.priority,
+            obj.get_priority_display().lower(),
+        )
+
+    @admin.display(description="Responsável", ordering="responsible__username")
+    def responsible_summary(self, obj):
+        if not obj.responsible:
+            return format_html('<span class="lead-muted">Não definido</span>')
+        return obj.responsible.get_full_name() or obj.responsible.username
+
     @admin.display(description="Situação", ordering="status")
     def status_badge(self, obj):
         return format_html(
@@ -220,7 +263,7 @@ class LeadAdmin(admin.ModelAdmin):
         tasks = getattr(obj, "pending_tasks", None)
         task = tasks[0] if tasks else None
         if task is None:
-            return "—"
+            return format_html('<span class="lead-muted">Sem ação programada</span>')
         css_class = " lead-next-action--overdue" if task.is_overdue else ""
         return format_html(
             '<span class="lead-next-action{}">{} · {}</span>',
@@ -228,6 +271,39 @@ class LeadAdmin(admin.ModelAdmin):
             task.get_kind_display(),
             timezone.localtime(task.due_at).strftime("%d/%m/%Y %H:%M"),
         )
+
+    @admin.display(description="Recebido em", ordering="created_at")
+    def received_at(self, obj):
+        local_created_at = timezone.localtime(obj.created_at)
+        return format_html(
+            '<span class="lead-received__date">{}</span>'
+            '<span class="lead-received__time">{}</span>',
+            local_created_at.strftime("%d/%m/%Y"),
+            local_created_at.strftime("%H:%M"),
+        )
+
+    @admin.display(description="Ações")
+    def row_actions(self, obj):
+        change_url = reverse("admin:leads_lead_change", args=(obj.pk,))
+        links = [
+            format_html('<a class="lead-row-action lead-row-action--open" href="{}">Abrir</a>', change_url),
+            format_html('<a class="lead-row-action" href="mailto:{}" title="Enviar e-mail" aria-label="Enviar e-mail">E-mail</a>', obj.email),
+        ]
+        digits = "".join(character for character in obj.phone if character.isdigit())
+        if digits:
+            whatsapp_number = digits if digits.startswith("55") else f"55{digits}"
+            links.insert(
+                1,
+                format_html('<a class="lead-row-action" href="tel:{}" title="Ligar" aria-label="Ligar">Ligar</a>', digits),
+            )
+            links.append(
+                format_html(
+                    '<a class="lead-row-action lead-row-action--whatsapp" href="https://wa.me/{}" target="_blank" rel="noopener" title="WhatsApp" aria-label="WhatsApp">WhatsApp</a>',
+                    whatsapp_number,
+                )
+            )
+        rendered_links = format_html_join(" ", "{}", ((link,) for link in links))
+        return format_html('<span class="lead-row-actions">{}</span>', rendered_links)
 
     @admin.display(description="Próxima ação")
     def next_action_summary(self, obj):
@@ -247,17 +323,68 @@ class LeadAdmin(admin.ModelAdmin):
         )
 
     def changelist_view(self, request, extra_context=None):
-        now = timezone.now()
         base = self.model.objects.filter(
             anonymized_at__isnull=True
         ).exclude(status=Lead.Status.DISCARDED)
         counts = base.aggregate(
-            new=Count("id", filter=Q(status=Lead.Status.NEW)),
-            in_progress=Count("id", filter=Q(status=Lead.Status.IN_PROGRESS)),
-            visits=Count("id", filter=Q(status=Lead.Status.VISIT_SCHEDULED)),
-            overdue=Count("id", filter=Q(tasks__status=LeadTask.Status.PENDING, tasks__due_at__lt=now), distinct=True),
+            new=Count("id", filter=Q(status=Lead.Status.NEW), distinct=True),
+            in_progress=Count(
+                "id", filter=Q(status=Lead.Status.IN_PROGRESS), distinct=True
+            ),
+            visits=Count(
+                "id", filter=Q(status=Lead.Status.VISIT_SCHEDULED), distinct=True
+            ),
+            completed=Count(
+                "id", filter=Q(status=Lead.Status.COMPLETED), distinct=True
+            ),
         )
-        extra_context = {**(extra_context or {}), "lead_counts": counts}
+        active_filter_chips = []
+        filter_options = {
+            "status__exact": ("Situação", dict(Lead.Status.choices)),
+            "priority__exact": ("Prioridade", dict(Lead.Priority.choices)),
+            "source__exact": ("Origem", dict(Lead.Source.choices)),
+            "next_action": (
+                "Próxima ação",
+                {
+                    "overdue": "Atrasadas",
+                    "today": "Hoje",
+                    "upcoming": "Futuras",
+                    "none": "Sem próxima ação",
+                },
+            ),
+        }
+        for parameter, (title, choices) in filter_options.items():
+            value = request.GET.get(parameter)
+            if not value:
+                continue
+            remaining = request.GET.copy()
+            remaining.pop(parameter, None)
+            active_filter_chips.append(
+                {
+                    "title": title,
+                    "value": choices.get(value, value),
+                    "remove_url": f"?{remaining.urlencode()}" if remaining else "?",
+                }
+            )
+        responsible_id = request.GET.get("responsible__id__exact")
+        if responsible_id:
+            responsible_name = get_user_model().objects.filter(pk=responsible_id).values_list(
+                "username", flat=True
+            ).first() or responsible_id
+            remaining = request.GET.copy()
+            remaining.pop("responsible__id__exact", None)
+            active_filter_chips.append(
+                {
+                    "title": "Responsável",
+                    "value": responsible_name,
+                    "remove_url": f"?{remaining.urlencode()}" if remaining else "?",
+                }
+            )
+        extra_context = {
+            **(extra_context or {}),
+            "lead_counts": counts,
+            "active_filter_chips": active_filter_chips,
+        }
         return super().changelist_view(request, extra_context=extra_context)
 
     def save_model(self, request, obj, form, change):
@@ -354,6 +481,41 @@ class LeadAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return request.user.is_superuser or request.user.groups.filter(name=ADMINISTRATOR_GROUP).exists()
+
+    def delete_view(self, request, object_id, extra_context=None):
+        if request.method == "POST":
+            reason = request.POST.get("removal_reason", "").strip()
+            confirmed = request.POST.get("confirm_removal") == "yes"
+            if not reason or not confirmed:
+                if not reason:
+                    messages.error(request, "Informe o motivo da remoção.")
+                if not confirmed:
+                    messages.error(request, "Marque a confirmação antes de remover.")
+                submitted_data = request.POST
+                request.POST = QueryDict()
+                try:
+                    return super().delete_view(
+                        request,
+                        object_id,
+                        extra_context={
+                            **(extra_context or {}),
+                            "removal_reason_value": reason,
+                        },
+                    )
+                finally:
+                    request.POST = submitted_data
+        return super().delete_view(request, object_id, extra_context=extra_context)
+
+    def log_deletions(self, request, queryset):
+        reason = request.POST.get("removal_reason", "").strip()
+        if not reason:
+            return super().log_deletions(request, queryset)
+        return LogEntry.objects.log_actions(
+            user_id=request.user.pk,
+            queryset=queryset,
+            action_flag=DELETION,
+            change_message=f"Motivo da remoção: {reason}",
+        )
 
     @admin.action(description="Exportar contatos selecionados em CSV")
     def export_csv(self, request, queryset):
